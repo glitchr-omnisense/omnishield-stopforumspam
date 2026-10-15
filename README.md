@@ -33,6 +33,19 @@ Reporting a spammer back takes an API key of StopForumSpam's: `$list->report($id
 [Documentation](docs/index.md): the options, the answer and how it is read, the terms, what was
 verified - lookups on the documentation's values and a Tor exit node, for real, on 2026-10-07.
 
+## Responsibility
+
+This package is an independent, unofficial client: it is not affiliated with, endorsed by or
+sponsored by StopForumSpam. It reaches their service on behalf of whoever runs it, and it does not
+redistribute their data beyond the short excerpts recorded as test fixtures. Its MIT licence covers
+this package's code only and grants no right to the service or to its data.
+
+Whoever installs and runs this package is responsible for complying with StopForumSpam's terms
+([stopforumspam.com/legal](https://www.stopforumspam.com/legal)), for obtaining whatever they
+require (an account, a key, a licence or subscription, an attribution or a citation, a rate limit to
+respect), and for any use made of what it returns. The authors publish it free of charge, make no
+commercial use of it, and accept no liability for how it is used (see [LICENSE](LICENSE)).
+
 License: MIT since 2026-10-09; earlier versions remain published under LGPL-3.0-or-later.
 
 Formerly `omniguard/stopforumspam`, renamed on 2026-10-10 with its family (`glitchr/omnishield`).
