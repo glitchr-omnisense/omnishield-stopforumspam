@@ -1,6 +1,6 @@
 # omnishield/stopforumspam
 
-**StopForumSpam** for [glitchr/omnishield](https://github.com/glitchr-studio/omnishield): are this IP
+**StopForumSpam** for [omniscient/omnishield](https://github.com/glitchr-studio/omnishield): are this IP
 address, this e-mail, this name reported for abuse. One question to the public database - no key
 needed - and an answer the site reads at its own threshold: how often, how surely, how recently,
 and which part matched; a Tor exit node said so.
