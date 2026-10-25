@@ -1,9 +1,11 @@
----
-title: omnishield/stopforumspam
-order: 1
----
-
 # omnishield/stopforumspam
+
+StopForumSpam's public database as an Omnishield list: are this IP address, this e-mail, this name
+reported for abuse, at a confidence threshold of the site's - and, with a key, a spammer reported
+back. The gateway calls `POST https://api.stopforumspam.org/api` to look up (no key;
+`europe.stopforumspam.org` and `us.stopforumspam.org` serve the same) and
+`POST https://www.stopforumspam.com/add` to report (an API key). Free for non-commercial use, for
+the people who submit a form - never as a firewall (the terms, below).
 
 ## Installation
 
@@ -14,6 +16,11 @@ composer require omnishield/stopforumspam
 PHP 8.2 or later, `omniscient/omnishield` and `symfony/http-client` (give the factory your
 application's client, a `MockHttpClient` in a test). No key to look up; one to report.
 
+## Credentials
+
+None to look up. To report, an **API key** of a StopForumSpam account (`api_key`); without one,
+`report()` is a `NotSupportedException` and `capabilities()->reports` is false.
+
 ## The sources
 
 Written from StopForumSpam's [API usage](https://www.stopforumspam.com/usage) page as it read on
@@ -23,17 +30,30 @@ form (`/add`) and the terms - and from its answers that day.
 
 ## Options
 
-| Option | Default | |
-|---|---|---|
-| `threshold` | 50 | the confidence (0-100) from which a part that appears counts |
-| `send` | `[ip, email, name]` | what of the visitor is sent; a list or `ip,email` |
-| `hash_email` | `true` | the e-mail as its MD5 (`emailhash`), lower-cased and trimmed first; StopForumSpam then normalises nothing (Gmail's dots and `+tags`): `false` sends it in clear and catches more |
-| `expire` | | days: a sighting older than that does not count (`expire`) |
-| `tor` | `neutral` | a Tor exit node: `neutral` as listed, `ignore` never counts, `block` always counts - decided here, not by `notorexit`/`badtorexit` |
-| `wildcards` | `true` | `false` leaves out StopForumSpam's own lists of hostile domains, names and networks (`nobadall`) |
-| `api_key` | | only to report |
-| `base_uri` | `https://api.stopforumspam.org/api` | `https://europe.stopforumspam.org/api` or `https://us.stopforumspam.org/api` to stay in a region |
-| `report_uri` | `https://www.stopforumspam.com/add` | |
+| Option | Type | Default | Required | |
+|---|---|---|---|---|
+| `threshold` | number, 0 to 100 | `50` | no | the confidence from which a part that appears counts; outside 0..100: `InvalidConfigException` |
+| `send` | list of `ip`, `email`, `name`, or one comma-separated string | `[ip, email, name]` | no | what of the visitor is sent - and `Capabilities::$reads`; another word: `InvalidConfigException` |
+| `hash_email` | bool | `true` | no | the e-mail as its MD5 (`emailhash`), lower-cased and trimmed first; StopForumSpam then normalises nothing (Gmail's dots and `+tags`): `false` sends it in clear and catches more |
+| `expire` | int, days | `null` | no | a sighting older than that does not count (`expire`, at least 1) |
+| `tor` | string | `neutral` | no | a Tor exit node: `neutral` as listed, `ignore` never counts (even if reported), `block` always counts - decided here, not by `notorexit`/`badtorexit`; another: `InvalidConfigException` |
+| `wildcards` | bool | `true` | no | `false` leaves out StopForumSpam's own lists of hostile domains, names and networks (`nobadall`) |
+| `api_key` | string | `null` | no | only to report |
+| `base_uri` | string | `https://api.stopforumspam.org/api` | no | `https://europe.stopforumspam.org/api` or `https://us.stopforumspam.org/api` to stay in a region |
+| `report_uri` | string | `https://www.stopforumspam.com/add` | no | |
+
+`new StopforumspamGatewayFactory(?HttpClientInterface $http = null)`: the application's HTTP
+client.
+
+## Capabilities
+
+| | |
+|---|---|
+| is this identity known (`ReputationInterface::lookup()`) | yes: the parts of `send` |
+| reports | with `api_key`: the gateway's own `report(Identity $identity, string $evidence = '')` |
+| a score | `confidence`, 0 to 100; `frequency` |
+| is this token valid, is this content spam | no |
+| third party, cookies | StopForumSpam; no cookie |
 
 ## The lookup
 
@@ -67,7 +87,8 @@ $list->report(new Identity($ip, $email, $name), evidence: $whatTheyPosted);
 
 `POST https://www.stopforumspam.com/add` with `username`, `ip_addr`, `email`, `evidence`,
 `api_key` - all three parts required, StopForumSpam takes nothing less. HTTP 200 is a report
-taken; 403 a refusal, its reason in a paragraph: `ProviderException`. Without `api_key`:
+taken; any other status a refusal, its reason read from the page's paragraph: 401 and 403 an
+`InvalidKeyException` (the key), the others a `ProviderException`. Without `api_key`:
 `NotSupportedException`, and `capabilities()->reports` is false.
 
 ## The terms
@@ -78,6 +99,65 @@ for internal use only"; "API queries are limited to 100,000 per day"; "This API 
 as a general software firewall. Checking every incoming connection against the API will be treated
 as a denial of service attack". Data offered as is, without guarantee.
 
+## Example
+
+A Tor exit node and a hashed e-mail, StopForumSpam's answer given by a `MockHttpClient` that prints
+what is sent, then the same address with `tor: ignore` (run in omnishield's workspace on
+2026-10-26, offline):
+
+```php
+<?php
+
+require 'vendor/autoload.php';
+
+use Omnishield\Model\Identity;
+use Omnishield\Stopforumspam\StopforumspamGatewayFactory;
+use Symfony\Component\HttpClient\MockHttpClient;
+use Symfony\Component\HttpClient\Response\MockResponse;
+
+$http = new MockHttpClient(static function (string $method, string $url, array $options): MockResponse {
+    echo $method, ' ', $url, ': ', $options['body'], "\n";
+
+    return new MockResponse(json_encode(['success' => 1,
+        'ip' => ['value' => '185.220.101.1', 'appears' => 1, 'frequency' => 91, 'lastseen' => '2026-10-24 21:14:03', 'confidence' => 95.29, 'torexit' => 1],
+        'emailhash' => ['value' => md5('someone@example.org'), 'appears' => 0, 'frequency' => 0],
+    ]));
+});
+$list = (new StopforumspamGatewayFactory($http))->create(['threshold' => 50]);
+$reputation = $list->lookup(new Identity('185.220.101.1', 'Someone@example.org'));
+printf("known: %s, reasons: %s, frequency %d, confidence %.2f, last seen %s\n", var_export($reputation->known, true), implode(', ', $reputation->reasons), $reputation->frequency, $reputation->confidence, $reputation->lastSeen->format(DATE_ATOM));
+$ignoring = (new StopforumspamGatewayFactory($http))->create(['tor' => 'ignore', 'send' => 'ip']);
+$known = $ignoring->lookup(new Identity('185.220.101.1'))->known;
+echo 'tor: ignore -> known: ', var_export($known, true), "\n";
+```
+
+```
+POST https://api.stopforumspam.org/api: ip=185.220.101.1&emailhash=a70eaed09677478b42b11fc7a04f4c87&json=
+known: true, reasons: ip, tor, frequency 91, confidence 95.29, last seen 2026-10-24T21:14:03+00:00
+POST https://api.stopforumspam.org/api: ip=185.220.101.1&json=
+tor: ignore -> known: false
+```
+
+In Symfony:
+
+```yaml
+omnishield:
+    gateways:
+        reported: { factory: stopforumspam, options: { threshold: 80, send: 'ip,email', api_key: '%env(default::STOPFORUMSPAM_API_KEY)%' } }
+```
+
+## Errors
+
+| Exception | When |
+|---|---|
+| `UnreachableException` | no answer, HTTP 5xx, 429 (the daily limit) |
+| `ProviderException` | `{"success": 0, "error": ...}`; an answer that is not JSON (an HTTP 401 or 403 to a lookup included: the lookup sends no key); a report refused (HTTP other than 200), its reason from the page's paragraph |
+| `InvalidKeyException` | a report answered HTTP 401 or 403: the API key |
+| `NotSupportedException` | `report()` without `api_key` |
+| `InvalidConfigException` | an option out of its range; a report without all three parts |
+
+An identity with nothing to send (no part of `send` given) is unknown, and nothing is asked.
+
 ## Verified, and not
 
 | | |
@@ -87,3 +167,16 @@ as a denial of service attack". Data offered as is, without guarantee.
 | `notorexit` | **seen not to work as documented** on 2026-10-07: the Tor exit node kept `appears: 1` - hence the `tor` option, decided here |
 | Reporting (`/add`) | **not verified in real: no API key.** Its request follows the documentation; its answers (200 empty, 403 with a paragraph) too |
 | The 100,000-a-day limit and its 503 | not reached |
+
+## Responsibility
+
+This package is an independent, unofficial client: it is not affiliated with, endorsed by or
+sponsored by StopForumSpam. It reaches their service on behalf of whoever runs it, and it does not
+redistribute their data beyond the short excerpts recorded as test fixtures. Its MIT licence covers
+this package's code only and grants no right to the service or to its data.
+
+Whoever installs and runs this package is responsible for complying with StopForumSpam's terms
+([stopforumspam.com/legal](https://www.stopforumspam.com/legal)), for obtaining whatever they
+require (an account, a key, a licence or subscription, an attribution or a citation, a rate limit to
+respect), and for any use made of what it returns. The authors publish it free of charge, make no
+commercial use of it, and accept no liability for how it is used (see the package's LICENSE).

@@ -30,7 +30,7 @@ and for a commercial system's internal use; 100,000 queries a day.
 
 Reporting a spammer back takes an API key of StopForumSpam's: `$list->report($identity, $evidence)`.
 
-[Documentation](docs/index.md): the options, the answer and how it is read, the terms, what was
+[Documentation](docs/index.md): what it calls, the credentials, the capabilities, an example run offline, the errors, the options, the answer and how it is read, the terms, what was
 verified - lookups on the documentation's values and a Tor exit node, for real, on 2026-10-07.
 
 ## Responsibility
