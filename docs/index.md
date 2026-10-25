@@ -82,6 +82,7 @@ as a denial of service attack". Data offered as is, without guarantee.
 
 | | |
 |---|---|
+| The family's conformance suite (`Omnishield\Testing\GatewayContractTests`) | **green on 2026-10-25**, offline: `Tests/StopforumspamContractTest.php` on the recorded answers; an error object in an answer no longer warns (array to string), a refused key on `/add` (401/403) is an `InvalidKeyException` |
 | Lookups without a key | **done on 2026-10-07**, against `api.stopforumspam.org` (`bare --live` and the recorded answers): the documentation's address, e-mail, hashed e-mail and name (none appears today), a Tor exit node (185.220.101.1: appears, frequency 91, confidence 95.29, `torexit`), its sighting past `expire=1`, an address reported long ago (1.2.3.4), a blacklisted e-mail (testing@xrumer.ru: 255, 99.95), a malformed address; `europe.stopforumspam.org` answers the same |
 | `notorexit` | **seen not to work as documented** on 2026-10-07: the Tor exit node kept `appears: 1` - hence the `tor` option, decided here |
 | Reporting (`/add`) | **not verified in real: no API key.** Its request follows the documentation; its answers (200 empty, 403 with a paragraph) too |

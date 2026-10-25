@@ -3,6 +3,7 @@
 namespace Omnishield\Stopforumspam;
 
 use Omnishield\Exception\InvalidConfigException;
+use Omnishield\Exception\InvalidKeyException;
 use Omnishield\Exception\NotSupportedException;
 use Omnishield\Exception\ProviderException;
 use Omnishield\Http\Answer;
@@ -83,7 +84,9 @@ final class StopforumspamGateway implements ReputationInterface
 
         $data = Answer::send($this->http, 'stopforumspam', 'POST', $this->baseUri, ['body' => $fields])->json();
         if (1 !== (int) ($data['success'] ?? 0)) {
-            throw new ProviderException('stopforumspam', (string) ($data['error'] ?? 'success: 0'));
+            $error = $data['error'] ?? 'success: 0';
+
+            throw new ProviderException('stopforumspam', \is_scalar($error) ? (string) $error : (string) json_encode($error, \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE));
         }
 
         $known = false;
@@ -143,8 +146,10 @@ final class StopforumspamGateway implements ReputationInterface
         $answer = Answer::send($this->http, 'stopforumspam', 'POST', $this->reportUri, ['body' => ['username' => $identity->name, 'ip_addr' => $identity->ip, 'email' => $identity->email, 'evidence' => $evidence, 'api_key' => $this->apiKey]]);
         if (200 !== $answer->status) {
             $reason = preg_match('~<p[^>]*>(.*?)</p>~is', $answer->body, $m) ? trim(strip_tags($m[1])) : mb_substr(trim(strip_tags($answer->body)), 0, 200);
+            $message = \sprintf('The report was refused (HTTP %d): %s', $answer->status, $reason);
 
-            throw new ProviderException('stopforumspam', \sprintf('The report was refused (HTTP %d): %s', $answer->status, $reason), (string) $answer->status);
+            // 401, 403: the API key; anything else: the report.
+            throw \in_array($answer->status, [401, 403], true) ? new InvalidKeyException('stopforumspam', $message, (string) $answer->status) : new ProviderException('stopforumspam', $message, (string) $answer->status);
         }
     }
 }

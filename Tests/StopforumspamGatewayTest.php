@@ -3,6 +3,7 @@
 namespace Omnishield\Stopforumspam\Tests;
 
 use Omnishield\Exception\InvalidConfigException;
+use Omnishield\Exception\InvalidKeyException;
 use Omnishield\Exception\NotSupportedException;
 use Omnishield\Exception\ProviderException;
 use Omnishield\Exception\UnreachableException;
@@ -137,6 +138,7 @@ final class StopforumspamGatewayTest extends TestCase
         $gateway->report(new Identity('192.0.2.1', 'a@example.org', 'spammer'), 'Buy now');
         self::assertSame(['POST', 'https://www.stopforumspam.com/add', ['username' => 'spammer', 'ip_addr' => '192.0.2.1', 'email' => 'a@example.org', 'evidence' => 'Buy now', 'api_key' => 'k3y']], $this->calls[0]);
 
+        $this->expectException(InvalidKeyException::class);
         $this->expectExceptionMessage('[stopforumspam] The report was refused (HTTP 403): Invalid API key');
         $gateway->report(new Identity('192.0.2.1', 'a@example.org', 'spammer'));
     }
