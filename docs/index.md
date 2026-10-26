@@ -13,7 +13,7 @@ the people who submit a form - never as a firewall (the terms, below).
 composer require omnishield/stopforumspam
 ```
 
-PHP 8.2 or later, `omniscient/omnishield` and `symfony/http-client` (give the factory your
+PHP 8.2 or later, `omnisense/omnishield` and `symfony/http-client` (give the factory your
 application's client, a `MockHttpClient` in a test). No key to look up; one to report.
 
 ## Credentials
