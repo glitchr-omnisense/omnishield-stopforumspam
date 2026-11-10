@@ -1,0 +1,47 @@
+{
+    "$schema": "https://github.com/glitchr-omnisense/contracts/blob/1.x/resources/usage-policy.schema.json",
+    "provider": "stopforumspam",
+    "rateLimits": [
+        {
+            "max": 20000,
+            "window": "day",
+            "scope": "application",
+            "operations": [
+                "lookup"
+            ],
+            "note": "\"API queries are limited to 20,000 per day\" (the legal page as indexed on 2026-11-10); the package's docs read 100,000 on 2026-10: the stricter declared."
+        }
+    ],
+    "rights": {
+        "commercial": "contract",
+        "openSourceRequired": null,
+        "caching": {
+            "permission": "unknown",
+            "maxTtl": null
+        },
+        "storage": "unknown",
+        "redistribution": "forbidden",
+        "attribution": {
+            "required": false,
+            "text": null,
+            "url": null,
+            "where": []
+        },
+        "licence": null
+    },
+    "requirements": {
+        "key": false,
+        "userAgent": {
+            "required": false,
+            "pattern": null
+        }
+    },
+    "provenance": {
+        "terms": "https://www.stopforumspam.com/legal",
+        "policy": "https://www.stopforumspam.com/usage",
+        "contact": "https://www.stopforumspam.com/contact",
+        "notes": "stopforumspam.com answered 403 to an automated reader on 2026-11-10; its terms were read through a search engine's index of the legal page that day: use of the data and software is non-commercial; the data may be used by a commercial system for its internal use only; the API is not to be used as a firewall (ask it about whoever submits a form, not every visitor); access to the service and its data may not be resold; any term may be waived at the site's discretion. Commercial use is therefore declared \"contract\" (a commercial site says contract: true once its use is internal, or once waived), redistribution \"forbidden\". The daily limit: 20,000 on the legal page as indexed, 100,000 per site/IP on the usage page as read on 2026-10: 20,000 declared, the stricter. Lookups need no key; reporting (report()) needs the site's api_key. Caching and storage not addressed.",
+        "verifiedAt": "2026-11-10",
+        "declaredBy": "maintainer"
+    }
+}

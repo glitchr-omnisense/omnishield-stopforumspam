@@ -80,6 +80,7 @@ final class StopforumspamGatewayFactory extends GatewayFactory
             apiKey: $c->string('api_key'),
             baseUri: $c->string('base_uri') ?? StopforumspamGateway::BASE_URI,
             reportUri: $c->string('report_uri') ?? StopforumspamGateway::REPORT_URI,
+            backoff: $c->backoff(),
         );
     }
 }

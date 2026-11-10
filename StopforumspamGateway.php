@@ -2,6 +2,9 @@
 
 namespace Omnishield\Stopforumspam;
 
+use Omnisense\Contracts\Policy\Backoff;
+use Omnisense\Contracts\Policy\DeclaresUsagePolicyInterface;
+use Omnisense\Contracts\Policy\UsagePolicy;
 use Omnishield\Exception\InvalidConfigException;
 use Omnishield\Exception\InvalidKeyException;
 use Omnishield\Exception\NotSupportedException;
@@ -26,8 +29,13 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * appears (expire), and a reported address seen three times long ago scores
  * under 1.
  */
-final class StopforumspamGateway implements ReputationInterface
+final class StopforumspamGateway implements ReputationInterface, DeclaresUsagePolicyInterface
 {
+    /** The usage policy its package declares (omnisense/contracts' schema). */
+    public const POLICY = __DIR__.'/policy.json';
+
+    private static ?UsagePolicy $policy = null;
+
     public const BASE_URI = 'https://api.stopforumspam.org/api';
     public const REPORT_URI = 'https://www.stopforumspam.com/add';
 
@@ -46,6 +54,7 @@ final class StopforumspamGateway implements ReputationInterface
         #[\SensitiveParameter] private readonly ?string $apiKey = null,
         private readonly string $baseUri = self::BASE_URI,
         private readonly string $reportUri = self::REPORT_URI,
+        private readonly ?Backoff $backoff = null,
     ) {
     }
 
@@ -61,7 +70,13 @@ final class StopforumspamGateway implements ReputationInterface
 
     public function capabilities(): Capabilities
     {
-        return new Capabilities(reputation: true, thirdParty: true, cookies: false, reports: null !== $this->apiKey, reads: $this->send);
+        return new Capabilities(reputation: true, thirdParty: true, cookies: false, reports: null !== $this->apiKey, reads: $this->send, policy: $this->usagePolicy());
+    }
+
+    /** Its usage policy, as its package declares it: policy.json beside this class. */
+    public function usagePolicy(): UsagePolicy
+    {
+        return self::$policy ??= UsagePolicy::fromFile(self::POLICY);
     }
 
     public function lookup(Identity $identity): Reputation
@@ -82,7 +97,7 @@ final class StopforumspamGateway implements ReputationInterface
         }
         $fields += array_filter(['json' => '', 'expire' => $this->expire, 'nobadall' => $this->wildcards ? null : ''], static fn ($v) => null !== $v);
 
-        $data = Answer::send($this->http, 'stopforumspam', 'POST', $this->baseUri, ['body' => $fields])->json();
+        $data = Answer::send($this->http, 'stopforumspam', 'POST', $this->baseUri, ['body' => $fields], $this->backoff)->json();
         if (1 !== (int) ($data['success'] ?? 0)) {
             $error = $data['error'] ?? 'success: 0';
 
@@ -143,7 +158,7 @@ final class StopforumspamGateway implements ReputationInterface
             throw new InvalidConfigException('StopForumSpam takes a report with an IP address, an e-mail and a name, all three.');
         }
 
-        $answer = Answer::send($this->http, 'stopforumspam', 'POST', $this->reportUri, ['body' => ['username' => $identity->name, 'ip_addr' => $identity->ip, 'email' => $identity->email, 'evidence' => $evidence, 'api_key' => $this->apiKey]]);
+        $answer = Answer::send($this->http, 'stopforumspam', 'POST', $this->reportUri, ['body' => ['username' => $identity->name, 'ip_addr' => $identity->ip, 'email' => $identity->email, 'evidence' => $evidence, 'api_key' => $this->apiKey]], $this->backoff);
         if (200 !== $answer->status) {
             $reason = preg_match('~<p[^>]*>(.*?)</p>~is', $answer->body, $m) ? trim(strip_tags($m[1])) : mb_substr(trim(strip_tags($answer->body)), 0, 200);
             $message = \sprintf('The report was refused (HTTP %d): %s', $answer->status, $reason);
