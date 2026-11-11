@@ -25,14 +25,18 @@ use Symfony\Component\HttpClient\Response\MockResponse;
  */
 final class StopforumspamGatewayTest extends TestCase
 {
-    /** @var list<array{string, string, array<string, string>}> */
+    /** @var list<array{string, string, array<int|string, array<mixed>|string>}> */
     private array $calls = [];
 
-    /** @param list<string|MockResponse> $answers */
+    /**
+     * @param list<string|MockResponse> $answers
+     * @param array<string, mixed>      $options
+     */
     private function gateway(array $answers, array $options = []): StopforumspamGateway
     {
         $http = new MockHttpClient(function (string $method, string $url, array $options) use (&$answers): MockResponse {
-            parse_str((string) $options['body'], $body);
+            self::assertIsString($options['body']);
+            parse_str($options['body'], $body);
             $this->calls[] = [$method, $url, $body];
             $answer = array_shift($answers) ?? throw new \LogicException('No answer left.');
 
@@ -97,7 +101,7 @@ final class StopforumspamGatewayTest extends TestCase
         $gateway = $this->gateway(['lookup-tor-exit'], ['send' => 'ip']);
 
         self::assertFalse($gateway->lookup(new Identity(null, 'a@example.org', 'Camille'))->known);
-        self::assertSame([], $this->calls, 'no address: no call');
+        self::assertCount(0, $this->calls, 'no address: no call');
         $gateway->lookup(new Identity('185.220.101.1', 'a@example.org', 'Camille'));
         self::assertSame(['ip' => '185.220.101.1', 'json' => ''], $this->calls[0][2]);
         self::assertSame(['ip'], $gateway->capabilities()->reads);
@@ -163,7 +167,7 @@ final class StopforumspamGatewayTest extends TestCase
         foreach ([['threshold' => 120], ['send' => 'ip,phone'], ['tor' => 'maybe']] as $options) {
             try {
                 (new StopforumspamGatewayFactory(new MockHttpClient()))->create($options);
-                self::fail(json_encode($options));
+                self::fail(json_encode($options, \JSON_THROW_ON_ERROR));
             } catch (InvalidConfigException) {
                 self::addToAssertionCount(1);
             }

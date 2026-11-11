@@ -121,15 +121,15 @@ final class StopforumspamGateway implements ReputationInterface, DeclaresUsagePo
                 continue;
             }
             $tor = 'ip' === $name && self::flag($answer['torexit'] ?? 0);
-            $appears = 1 === (int) ($answer['appears'] ?? 0);
-            $sure = (float) ($answer['confidence'] ?? 0);
+            $appears = 1 === self::integer($answer['appears'] ?? 0);
+            $sure = self::number($answer['confidence'] ?? 0);
             $counts = match (true) {
                 $tor && 'ignore' === $this->tor => false,
                 $tor && 'block' === $this->tor => true,
                 default => $appears && $sure >= $this->threshold,
             };
-            $seen = isset($answer['lastseen']) ? \DateTimeImmutable::createFromFormat('Y-m-d H:i:s', (string) $answer['lastseen'], new \DateTimeZone('UTC')) ?: null : null;
-            $frequency = max($frequency, (int) ($answer['frequency'] ?? 0));
+            $seen = isset($answer['lastseen']) ? \DateTimeImmutable::createFromFormat('Y-m-d H:i:s', self::text($answer['lastseen']), new \DateTimeZone('UTC')) ?: null : null;
+            $frequency = max($frequency, self::integer($answer['frequency'] ?? 0));
             $confidence = max($confidence, $appears ? $sure : 0.0);
             $lastSeen = null === $lastSeen || ($seen && $seen > $lastSeen) ? $seen : $lastSeen;
             if ($counts) {
@@ -151,6 +151,24 @@ final class StopforumspamGateway implements ReputationInterface, DeclaresUsagePo
     private static function flag(mixed $value): bool
     {
         return \is_scalar($value) && 1 === (int) $value;
+    }
+
+    /** A field as the (int) cast read it: a scalar as its number; anything else 1 when it holds something, 0 when not. */
+    private static function integer(mixed $value): int
+    {
+        return \is_scalar($value) ? (int) $value : (int) (bool) $value;
+    }
+
+    /** A field as the (float) cast read it: a scalar as its number; anything else 1.0 when it holds something, 0.0 when not. */
+    private static function number(mixed $value): float
+    {
+        return \is_scalar($value) ? (float) $value : (float) (bool) $value;
+    }
+
+    /** A field as the (string) cast read it: a scalar as text; anything else, which no answer holds, empty (no date either way). */
+    private static function text(mixed $value): string
+    {
+        return \is_scalar($value) ? (string) $value : '';
     }
 
     /**

@@ -56,15 +56,15 @@ final class StopforumspamGatewayFactory extends GatewayFactory
 
     protected function build(Config $c): GatewayInterface
     {
-        $threshold = (float) $c['threshold'];
+        $threshold = self::number($c['threshold']);
         if ($threshold < 0 || $threshold > 100) {
-            throw new InvalidConfigException(\sprintf('The "stopforumspam" gateway\'s threshold is a confidence, from 0 to 100: %s.', $c['threshold']));
+            throw new InvalidConfigException(\sprintf('The "stopforumspam" gateway\'s threshold is a confidence, from 0 to 100: %s.', self::text($c['threshold'])));
         }
         $send = $c->list('send');
         if ($unknown = array_diff($send, ['ip', 'email', 'name'])) {
             throw new InvalidConfigException(\sprintf('The "stopforumspam" gateway sends ip, email or name, not %s.', implode(', ', $unknown)));
         }
-        $tor = (string) $c['tor'];
+        $tor = self::text($c['tor']);
         if (!\in_array($tor, ['neutral', 'ignore', 'block'], true)) {
             throw new InvalidConfigException(\sprintf('The "stopforumspam" gateway\'s tor is neutral, ignore or block, not "%s".', $tor));
         }
@@ -72,9 +72,9 @@ final class StopforumspamGatewayFactory extends GatewayFactory
         return new StopforumspamGateway(
             http: $this->http ?? HttpClient::create(),
             threshold: $threshold,
-            send: array_values($send),
+            send: $send,
             hashEmail: $c->bool('hash_email'),
-            expire: null !== $c['expire'] && '' !== $c['expire'] ? max(1, (int) $c['expire']) : null,
+            expire: null !== $c['expire'] && '' !== $c['expire'] ? max(1, self::integer($c['expire'])) : null,
             tor: $tor,
             wildcards: $c->bool('wildcards'),
             apiKey: $c->string('api_key'),
@@ -82,5 +82,23 @@ final class StopforumspamGatewayFactory extends GatewayFactory
             reportUri: $c->string('report_uri') ?? StopforumspamGateway::REPORT_URI,
             backoff: $c->backoff(),
         );
+    }
+
+    /** An option as the (string) cast read it: a scalar as text, anything else empty. */
+    private static function text(mixed $value): string
+    {
+        return \is_scalar($value) || $value instanceof \Stringable ? (string) $value : '';
+    }
+
+    /** An option as the (float) cast read it: a scalar as its number; anything else 1.0 when it holds something, 0.0 when not. */
+    private static function number(mixed $value): float
+    {
+        return \is_scalar($value) ? (float) $value : (float) (bool) $value;
+    }
+
+    /** An option as the (int) cast read it: a scalar as its number; anything else 1 when it holds something, 0 when not. */
+    private static function integer(mixed $value): int
+    {
+        return \is_scalar($value) ? (int) $value : (int) (bool) $value;
     }
 }
