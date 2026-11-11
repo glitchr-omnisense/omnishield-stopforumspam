@@ -120,6 +120,21 @@ final class StopforumspamGatewayTest extends TestCase
         $this->gateway([new MockResponse('', ['http_code' => 503])])->lookup(new Identity('192.0.2.1'));
     }
 
+    public function testASuccessOrATorExitThatIsNotAScalarIsNeitherSet(): void
+    {
+        try {
+            $this->gateway([new MockResponse('{"success": [1]}')])->lookup(new Identity('192.0.2.1'));
+            self::fail('a list is no success');
+        } catch (ProviderException) {
+            self::addToAssertionCount(1);
+        }
+
+        $listed = new MockResponse('{"success": 1, "ip": {"value": "185.220.101.1", "appears": 1, "frequency": 255, "confidence": 99.5, "torexit": [1]}}');
+        $reputation = $this->gateway([$listed], ['tor' => 'ignore'])->lookup(new Identity('185.220.101.1'));
+        self::assertTrue($reputation->known, 'a list is no Tor exit to ignore');
+        self::assertSame(['ip'], $reputation->reasons);
+    }
+
     public function testAReportNeedsAKeyAndAllThreeParts(): void
     {
         try {

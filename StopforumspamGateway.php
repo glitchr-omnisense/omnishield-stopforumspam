@@ -98,7 +98,7 @@ final class StopforumspamGateway implements ReputationInterface, DeclaresUsagePo
         $fields += array_filter(['json' => '', 'expire' => $this->expire, 'nobadall' => $this->wildcards ? null : ''], static fn ($v) => null !== $v);
 
         $data = Answer::send($this->http, 'stopforumspam', 'POST', $this->baseUri, ['body' => $fields], $this->backoff)->json();
-        if (1 !== (int) ($data['success'] ?? 0)) {
+        if (!self::flag($data['success'] ?? 0)) {
             $error = $data['error'] ?? 'success: 0';
 
             throw new ProviderException('stopforumspam', \is_scalar($error) ? (string) $error : (string) json_encode($error, \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE));
@@ -120,7 +120,7 @@ final class StopforumspamGateway implements ReputationInterface, DeclaresUsagePo
             if (isset($answer['error'])) {
                 continue;
             }
-            $tor = 'ip' === $name && 1 === (int) ($answer['torexit'] ?? 0);
+            $tor = 'ip' === $name && self::flag($answer['torexit'] ?? 0);
             $appears = 1 === (int) ($answer['appears'] ?? 0);
             $sure = (float) ($answer['confidence'] ?? 0);
             $counts = match (true) {
@@ -142,6 +142,15 @@ final class StopforumspamGateway implements ReputationInterface, DeclaresUsagePo
         }
 
         return new Reputation($known, $frequency, $confidence, $lastSeen, $reasons, $parts);
+    }
+
+    /**
+     * A flag of the answer's, 1 (or "1", true): what is not a scalar is not set - a list once read as 1,
+     * a success or a Tor exit the site ignores.
+     */
+    private static function flag(mixed $value): bool
+    {
+        return \is_scalar($value) && 1 === (int) $value;
     }
 
     /**
