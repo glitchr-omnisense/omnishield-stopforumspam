@@ -33,6 +33,14 @@ Reporting a spammer back takes an API key of StopForumSpam's: `$list->report($id
 [Documentation](docs/index.md): what it calls, the credentials, the capabilities, an example run offline, the errors, the options, the answer and how it is read, the terms, what was
 verified - lookups on the documentation's values and a Tor exit node, for real, on 2026-10-07.
 
+## Install
+
+```sh
+composer require omnishield/stopforumspam
+```
+
+It brings the family's core, `omnisense/omnishield`, and `omnisense/contracts` with it. No account and no key for a lookup (free for non-commercial use and a commercial system's internal use, 100,000 queries a day); reporting a spammer takes StopForumSpam's API key.
+
 ## Usage policy
 
 [`policy.json`](policy.json) (omnisense/contracts' schema, read at the provider's terms on 2026-11-10; its `provenance.notes` says what was read where): `lookup`: 20,000 a day; non-commercial, a commercial system for its internal use only (`commercial: contract`: say `usage: {commercial: true, contract: true}` when that is your use); the data not resold. Through `Registry::reputation()` the gateway comes behind its guard (its daily limit); `report()` is on `inner()`. A 429 and its `Retry-After` hold the next calls (`UnreachableException::retryAfter()`). See the core's [usage policies](https://github.com/glitchr-omnisense/omnishield/blob/1.x/docs/policies.md).
